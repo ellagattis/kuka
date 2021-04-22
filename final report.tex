@@ -1,0 +1,630 @@
+\documentclass[11pt, a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{setspace}
+\usepackage{helvet}
+\usepackage{titling}
+\usepackage{float}
+\usepackage{wrapfig}
+\usepackage{gensymb}
+\usepackage[margin=1.2in]{geometry}
+\usepackage{caption}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{pdfpages}
+
+
+\newcommand{\subtitle}[1]{%
+  \posttitle{%
+    \par\end{center}
+    \begin{center}\large#1\end{center}
+    \vskip0.5em}%
+}
+
+\renewcommand{\sfdefault}{phv}
+\renewcommand{\familydefault}{\sfdefault}
+
+
+\usepackage{wallpaper}
+\ThisULCornerWallPaper{1}{ucl-letterhead.pdf}
+
+
+
+\title{\bfseries{{\huge{Exploring AI Techniques for Snow Thickness Retrievals from an In-Situ Multi-Frequency Radar System}}}}
+\subtitle{\bfseries\LARGE{Ella Buehner Gattis}}
+
+\author{\Large MSci Physics\\[1cm]{\Large Supervised by Dr. Michel Tsamados and Dr. Rosemary Willatt}\\[1cm]}
+\date{September 2020 - April 2021\\[2cm]}
+
+\begin{document}
+
+\onehalfspacing
+
+\maketitle
+Word count: 7307
+
+\includepdf[pages=-, pagecommand={}]{submission_form.pdf}
+
+\pagebreak
+\begin{center}
+\begin{large}
+ \bfseries{Abstract}
+\end{large} 
+\end{center}
+
+
+Multi-frequency approaches are a novel method to estimate snow depth on sea ice from space, and have the potential to improve the accuracy of satellite sea ice thickness retrievals from altimeters such as CryoSat-2 or ICESat-2. The aim of this project was to advance multi-frequency approaches to deriving snow depth from radar data by developing novel machine learning (ML) and artificial intelligence (AI) techniques. We use data from the MOSAiC Arctic expedition in 2019/2020 when a fully polarimetric Ku- and Ka-band radar (KuKa radar) was deployed over snow- covered sea ice. We use several thousand echoes collected along several kilometres of transects as well as echoes at the fixed MOSAiC Met station during Leg 1 and 2 of the MOSAiC campaign. Collocated snow depth information was collected with a MagnaProbe, which is used here as the validation data. We systematically compare the MagnaProbe and KuKa data to find statistical links between the two independent datasets. We then explore a neural network approach to propose a first predictive model of snow thickness based on radar input data and MagnaProbe validation data. The neural network predictive model returned results with a Pearson correlation coefficient between the predicted and true values of up to 0.6. We provide a robust framework for future work employing neural network models.
+
+\pagebreak
+\tableofcontents
+\pagebreak
+
+\section{Introduction}
+
+\subsection{Motivation}
+Sea ice is formed by the freezing of ocean water,  and melts back into the ocean at the end of its lifetime.  Sea ice plays an important part in earth's climate because it has a high albedo,  meaning a significant proportion of incident sunlight is reflected back into space.  In contrast, ocean has a low albedo and absorbs most sunlight incident on it,  leading to warming.  Reduced sea ice coverage due to melting will mean more solar energy is absorbed, causing further temperature increases \cite{albedo}.
+
+Many important climate and environmental processes depend upon sea ice.  Sea ice plays an important role in the thermohaline currents driving the global ocean conveyor belt.  As Arctic ocean water freezes to form sea ice,  the salinity of the surrounding water increases because the process of freezing leaves salt behind. The denser, saltier water then sinks to the deep ocean before travelling south, where it warms up and rises before travelling back north  \cite{noaabelt}. Freshwater ice melting disrupts this balance because the lower density of freshwater compared to salt water slows down this process.  Higher concentrations of freshwater also affect the growth of algae and plankton,  which rely on nutrient rich salt-water, and form the foundation of the oceanic food web.  Sea ice also provides a habitat for a variety of wildlife.
+
+It is important to monitor changes in sea ice coverage and volume in order to observe trends and hence predict future changes. These measurements are crucial to climate modelling and understanding feedback systems related to a changing albedo and ocean warming \cite{epa}. 
+
+To effectively monitor sea ice,  it is necessary to measure both sea ice extent (SIE) and sea ice thickness (SIT).  Sea ice extent is defined as the area of sea covered by some minimum percentage of ice,  typically 15\% \cite{epa},  and is measured by satellite data and aerial imagery.  Sea ice thickness is another important parameter to measure and is necessary for understanding total sea ice volume and predicting future changes.  Sea ice thickness can vary with age,  and older sea ice is generally much thicker.  Younger, thinner ice is more likely to melt during the warmer months \cite{stroeve}.
+
+Sea ice thickness measurements have historically been made by drilling holes in the ice,  by using buoys,  or by ship-based observations.  These methods have serious limitations because taking a large amount of measurements reflective of the entire sea ice coverage manually is very time consuming,  and ship-based observations are only possible where the ice is navigable.  Other measurements have been made by upward looking sonar using submarines,  but these data do not provide large spatial coverage,  and are limited in time scale\cite{stroeve}.
+
+Satellite observation provides a desirable solution for collecting more widespread, regular, and high resolution sea ice data,  and would be the most efficient method of measuring sea ice thickness.  Satellite measurement uses either radar, assumed to be reflected from either the snow-ice interface or the air-snow interface depending on the radar operating frequency,  or lidar reflected from the air-snow interface to work out sea ice thickness.  In the case of reflection from the air-snow interface,  knowledge of snow depth is required for it to be subtracted from the height of the snow above sea level to subsequently work out sea ice thickness.  Lidar is thus useful for examining surface features such as roughness and height, but requires some other collocated data to calculate snow depth.  Satellites such as ESA's CryoSat-2 and NASA's ICESat-2 currently monitor sea ice using radar and lidar altimetry respectively.  Previous studies have demonstrated the possibility of combining laser and calibrated radar freeboard from various satellite missions to calculate snow depth \cite{lawrence2018}.
+
+Radar detection functions by reflecting electromagnetic waves in the radio or microwave domain off of objects in order to obtain information information about the object, such as its location.  Distances are calculated from the radar return using the return time together with the radar propagation velocity.  Radar can operate in all weather conditions, making it a desirable measurement solution compared to other sensors that rely on ambient radiation, such as infrared or optical sensors \cite{radar}.
+
+Sea ice thickness measurements using radar reflection rely on the assumption that most radar reflection occurs at either the air/snow interface or at the snow/ice interface,  depending on the operating frequency. However,  these assumptions do not always hold: deformities or flooding within the snow pack can cause the radar to scatter from within the snow pack instead of at the snow/ice interface \cite{kubandpen}.  Accurate estimation of snow depth is thus an important component of accurate measurement of sea ice thickness. 
+
+The focus of this project is to work towards a predictive model based on radar input data and MagnaProbe snow depth validation data that is able to extract snow depth from radar data alone.  A neural network approach is well suited to this task due to the self-learning ability of neural networks to extract features in data and adapt to nonlinearities and new data sets. 
+
+\subsection{Background}
+
+The Multidisciplinary drifting Observatory for the Study of Arctic Climate (MOSAiC) expedition in 2019/20 deployed a novel dual-frequency fully polarimetric in-situ sled-mounted radar (see Figure \ref{fig:radar}), which collected data in both the Ku and Ka band, and in all cross- and co-polarisations.  It also gathered GPS location data and recorded across-track and along-track tilt. The radar collected data in all combinations of transmit-receive horizontal/vertical polarisations; HH, VV, HV, and VH.  The data collected during the MOSAiC expedition provides an opportunity to work with data across different combinations of polarisations and frequency bands that are coincident in time and space, allowing us to extract different properties of the radar return.
+
+\begin{wrapfigure}{L}{0.5\textwidth}
+   		 \includegraphics[width=\linewidth]{scat-stare.jpg}
+    		\caption{The KuKa radar deployed during the MOSAiC expedition \cite{stroeve}.}
+	\label{fig:radar}
+\end{wrapfigure}
+
+
+Ku-band radar operates in the microwave frequency range 12-18 GHz, with a wavelength range of 2.5 - 1.67cm. Ka-band radar operates in the microwave frequency range 26.5-40GHz with wavelengths from slightly over 1cm - 7.5mm. The two frequency bands have different properties and range resolutions due to their differing wavelengths.  The Ku-band radar used here operated at a frequency range of 12-18GHz, with a range resolution of 2.5cm, and Ka-band at a frequency range of 30-40GHz with a range resolution of 1.5cm \cite{stroeve}.
+
+The dielectric properties of snow are frequency dependent, so having radar data in both the Ku- and Ka-band allows us to examine different attributes of the snow.  The dataset collected as part of the MOSAiC expedition containing both Ku- and Ka-band data in all four transmit-receive polarisations thus offers an exciting opportunity to examine relationships between the radar returns and snow depth and other characteristics.
+
+Work by Beaven et al. in 1995 showed for a frequency of 13.4GHz the dominant radar scattering from bare ice was the ice surface due to the large dielectric difference between ice and air, and the snow/ice interface in the case of snow cover on ice \cite{beaven}.  Subsequent studies using Ku-band radar have relied on the assumption that radar penetrates to the snow-ice interface to calculate sea ice thickness \cite{laxonvol}.  However, this result for radar scattering relies on cold and dry conditions.  Ka-band radar is generally assumed to be reflected from the air-snow interface and not penetrate into the snow pack,  but in reality is also sensitive to surface and volume scattering.
+
+\begin{wrapfigure}{L}{0.5\textwidth}
+   		 \includegraphics[width=\linewidth]{freeboard.png}
+    		\caption{Diagram showing sea ice freeboard and thickness together with snow freeboard and depth}
+	\label{fig:freeboard}
+\end{wrapfigure}
+
+The ice freeboard is the height of sea ice above water level.  In the same way,  the snow freeboard is the height of the top of the snow layer above the water level.  These are illustrated in Figure \ref{fig:freeboard}. It is possible to work out the ice freeboard from measurement of the snow freeboard by subtracting the depth of the snow layer,  but clearly this requires accurate measurements of the snow depth.  Once a value for the ice freeboard is known, it is possible to calculate the sea ice thickness by equation (1), where $t_i$ is the ice thickness, $t_s$ the snow depth, $f$ the ice freeboard, and $\rho_s, \rho_w$ and $\rho_i$ the density of the snow, water, and ice respectively \cite{SITfromSAR}.
+
+\begin{equation}
+t_i=\frac{t_s\cdot \rho_s+f\cdot\rho_w}{\rho_w-\rho_i}
+\end{equation}
+\linebreak
+
+Previous work anticipated the primary Ku-band radar scattering surface to be at the snow-ice interface \cite{beaven}, and employed this concept to calculate sea ice thickness from measurement of the ice freeboard, with an additional minor correction for the radar travel time through the snow pack \cite{circthinning}.  However,  later work by Willatt et al. in 2010 found that the dominant Ku-band scattering surface was only at the snow/ice interface in cases where there were no morphological features or flooding present in the snow \cite{kubandpen}.  Other studies showed that snow depth error has a considerable impact on the error estimate in the sea ice thickness, whereby a 30\% error in snow depth can lead to a relative ice thickness error of up to 80\% \cite{kernspreen}.
+
+Current evidence thus indicates that not only is knowledge of snow depth required in order to accurately calculate sea ice thickness, but also that the frequency dependent dielectric properties of snow can be exploited to calculate snow depth from radar data \cite{kubandpen}. 
+
+Snow depth measurement from radar data is an active area of research, with various approaches being trialled.  Newman et al.  used wavelet techniques to define the primary reflecting surfaces within snow to derive snow depth estimates to an accuracy of 1cm over level ice \cite{newman}.  Fons et al. developed an algorithm to find the surface elevation of the air-snow interface over Antarctic sea ice by defining a physical model that accounted for scattering from a snow layer and from below the snow surface \cite{fons}. By joining laser and radar altimetry they confirmed that scattering from within the snow pack often disrupts snow-ice elevation measurements, leading to overestimation of the ice freeboard and underestimation of snow depth.  
+
+Neural network approaches have previously been used with lidar data \cite{mei}.  Mei et al.  in 2019 trained a convolutional neural network with laser altimetry profiles of sea ice surfaces, and found it was possible to estimate sea ice thickness with a higher degree of accuracy and ability for generalisation than other current methods, without prior specification of snow depth or density.
+
+To date however,  neural network approaches have not been used to extract snow depth from KuKa radar data.  The contribution of my project is thus using a neural network to process radar data.
+
+\subsection{Objectives}
+The overall objective of this project was to improve snow thickness detection from radar echoes by developing a neural network approach.  In order to do this,  it was necessary to create a suitable training set consisting of input data (radar echoes) and corresponding output data (a true value of snow depth obtained from MagnaProbe data).  The first objective of the project,  then,  was to define a method for finding the nearest neighbour point within the MagnaProbe data for each radar echo.  Following this, the next objective was to build,  train,  and optimize a neural network to process this data which can then extract information about snow thickness from other radar data. The third and final objective was to compare the accuracy of the outputs of the neural network against true values by  evaluating the Pearson correlation between the network predicted snow depth values and the MagnaProbe snow depth values.
+
+\section{Methods}
+
+\subsection{Preliminary Analysis}
+The radar echoes were stored in a pickle object.  Pickling serializes data to convert it into a byte stream, allowing complex data to be stored in a compact binary representation. To read in and process the data in python, this process must be reversed,  which is called unpickling.  The code I used to unpickle the object that stored the Ku- and Ka- (KuKa) echoes was from Willatt \cite{stroeve}.  All of the data I used for analysis and neural network training/testing here were from 16th January 2020 MOSAiC expedition, which consisted of 7212 Ku-band echoes and 10980 Ka-band echoes.  The echoes were stored in a two-dimensional array, with each individual echo consisting of a one-dimensional array stored along the first axis. The entire set of echoes then consisted of several echoes stacked along the second axis.
+
+Preliminary analysis involved defining some basic python functions with which to analyse the echoes. These included identifying maxima above some threshold within the echoes, and parametrizing the width of the echo return by finding the first point to exceed a threshold power and the first point to fall below it.  The peak picking algorithm looped over points in a depth range of 1.5m to 2.5m (the range of interest here),  identified points greater than the previous and subsequent points in that echo,  and stored the points where maxima occurred in a new array.  The function to measure the width identified the first point to pass a threshold power of $1.5\times 10^{-5}$ and the first point to fall below that threshold power, and stored the intensity and depth for those points in a new array.
+
+The MagnaProbe data provides the truth value (within 5cm) for snow depth. The MagnaProbe is a device manufactured by Snow-Hydro that is used to measure snow depth.  It consists of a pole which is inserted into the snow cover through to the ice layer, and a basket which sits atop the snow surface. Once the pole has been inserted to the base of the snow, a button is pressed which takes a measurement of the distance between the tip of the pole and the base of the basket, and simultaneously acquires a GPS measurement.  The MagnaProbe takes snow depth measurements accurate to more than 5cm and GPS accurate to ±2.5 metres \cite{magnaprobe}. 
+
+Ice floes are large flat packs of ice that float on water, and therefore move and drift. This means that the GPS coordinates gathered by the MagnaProbe and the KuKa radar require a correction in order to accurately trace out the path taken on the surface of the floe.  GPS coordinates were translated into x and y coordinates adjusted from latitude and longitude to account for movement of the ice floe \cite{stroeve}.
+
+Using the x and y coordinates of the KuKa and MagnaProbe data, I was able to carry out a nearest neighbour search to identify the nearest MagnaProbe data point for any given KuKa radar point. I tried a number of different approaches to the nearest neighbour search. The first approach I used was to write a manual function which worked out the distance from each point using the Pythagorean distance $ r = \sqrt{x^2 + y^2}$ and iterating over the list of points to find the minimum distance, thus returning the nearest neighbour. This is not desirable to use in practise because it is very slow, and unnecessarily iterates over all of the points at every call, but was used to validate the other nearest neighbour search methods. The second approach I used was to use a KD-tree nearest neighbour search, but I found this complicated to implement. Finally, I used \verb|scipy.spatial.cdist| which returns the index of the closest point to do the nearest neighbour search. I found that cdist was slightly faster and more straightforward than using a KD-tree so this is what I have used. I wrote a wrapper function for cdist which iterates over the KuKa points to return the nearest MagnaProbe point for each.  The path taken by the KuKa radar and MagnaProbe in the $(x, y)$ coordinate system is shown in Figure \ref{fig:xyloc}.
+
+\begin{figure}[H]
+\centering
+   		 \includegraphics[width=0.7\linewidth]{locations.png}
+    		\caption{Plot showing the adjusted x and y locations of the KuKa data and nearest MagnaProbe data. The (x, y) coordinates are given in units of metres.}
+	\label{fig:xyloc}
+\end{figure}
+
+Following this,  I made plots of a variety of properties of the radar return against MagnaProbe snow depth in order to evaluate if these followed any meaningful relationship.  I evaluated the Pearson correlation coefficient for each, to investigate whether it would be possible to perform a linear regression on any of these variables.  Parameters I investigated included echo intensity at the maximum, width of the power return, distance in depth between the first and second maximum, depth at which the maximum occurred,  and difference in intensity between the first and second peak, all plotted against the MagnaProbe snow depth.
+
+Cropping the echoes to depth range 1-3 metres (the range in which we are interested here) reduced the length of each echo from 4096 elements for Ka-band and 2048 elements for Ku to 437 and 262 elements for the Ka- and Ku- bands respectively.  The code for this was also taken from code written by Dr.  Willatt for previous work. All of the echoes were converted from Watts to Decibels for further analysis.
+
+\begin{figure}[H]
+   		 \includegraphics[width=\linewidth]{radarsled.png}
+    		\caption{Simplified diagram of the radar setup to illustrate how the location of the air/snow interface relative to the radar can change as it moves along the snow surface,  and the impact of tilt on the echo. In situation (a) the sled mount sits relatively higher on the snow surface with the radar looking vertically down at the snow surface. In situation (b) the radar sits relatively lower, and looks at the snow surface which now appears closer, also with tilt.}
+	\label{fig:sled}
+\end{figure}
+
+We aligned the air/snow interface (taken as the first maximum occurring above a threshold power of -80dB) to occur at the same index in all of the 1d echo arrays.  Figure \ref{fig:sled} illustrates why the air/snow interface occurs at different depths relative to the radar for different locations along the transect.  This preprocessing step proved to be important to the network training.  The alignment method, developed by Dr. Tsamados,  functioned by identifying the first maximum above -80dB, and using \verb|np.roll| to "roll" the echo such that this maximum occured at the 100th index.
+ 
+This alignment then allowed me to take the anomaly of the echo by taking the mean of the echoes along the axis corresponding to movement along the transect, and subtracting it from the echo.
+
+There were some locations in the data for which there were many consecutive identical echoes due to the radar having to stop in one place for an extended period of time.  It is clear from visual inspection that the echoes gathered in the same location were all very similar, which indicates that the system noise is low. However, the repeated echoes are not useful for the analysis here, and would likely skew the data, so it was necessary to develop a method to filter them out. The first method was to create a loop that compared the x and y locations of consecutive points, and filtered out points where the Pythagorean distance between consecutive points was less than 0.1. The second was to create a mask that compared the standard deviation of consecutive echo returns, and filtered out those echoes where the standard deviation was less than 10000.  The second method based on difference between the echo returns themselves was more effective because it did not rely on any GPS location, and thus was utilized throughout the project.  The combination of filtering for repetition and cutting to depth range 1-3m reduced the 2d echo array sized from (10980, 4096) and (7212, 2048) to (7447, 437) and (4910, 262) for the Ka- and Ku- band respectively.
+
+\subsection{Neural Network}
+
+An artificial neural network is a structure intended to learn and adapt to some set of input and output data by passing over it multiple times in a similar way to the human brain \cite{ann}. The network is made up of layers of individual units referred to as neurons, inspired by the organisation of neurons in the brain. Each artificial neuron in the network receives input values multiplied by different weights, and produces an output corresponding to an activation function applied to the sum of the input values multiplied by their respective weights \cite{ann}.  The activation function decides whether the neuron should be fired by producing small values for small inputs and larger values for inputs larger than some threshold. \cite{SL} This is visualised in Figure \ref{fig:neuron}.
+
+\begin{figure}[H]
+\centering
+   		 \includegraphics[width=0.7\linewidth]{neuron.png}
+    		\caption{Illustration of the input and output values of a single artificial neuron}
+	\label{fig:neuron}
+\end{figure}
+
+A neural network then consists of many neurons arranged in layers, with each neuron in a layer connected to all  the neurons in the neighbouring layers. A simplified illustration of this structure is shown in Figure \ref{fig:net}. When the neural network is initialised,  all of the connections and weights are randomly assigned. During the process of training, the weights are adjusted to map the input onto the desired output.
+
+\begin{figure}[H]
+\centering
+   		 \includegraphics[width=0.8\linewidth]{neurons.png}
+    		\caption{Illustration of the role of a single neuron in a layer of a fully connected network}
+	\label{fig:net}
+\end{figure}
+
+The neural network was constructed in Python using TensorFlow \cite{tf}, an existing open-source machine learning library distributed by Google, together with the Keras API \cite {keras}, an open-source Python interface for the TensorFlow library.  
+
+Here I used supervised learning to train the neural network. There are a variety of other machine learning algorithms, including unsupervised learning and reinforcement learning, but they will not be explored here as they are not suitable for the nature of this project.  This is because they do not use labelled input and output data and are generally suitable for classification or control problems, not for regression problems, as well as being much more computationally expensive.
+
+\begin{figure}[H]
+\centering
+		\includegraphics[width=0.5\linewidth]{supervised.png}
+		\caption{Illustration of the supervised learning process.  This process is repeated several times for each epoch during training.}
+	\label{fig:SL}
+\end{figure}
+
+Training by supervised learning uses a given set of labelled data consisting of input variables and corresponding output, and maps the input to the output without changing the input space \cite{SL}. During the training process the network adjusts the weights and biases within the neural network for the given set of input until the desired output is achieved. Supervised learning therefore requires a set of input and output data.  The network passes over the whole data set multiple times to train. One pass over the entire data set is called an epoch.  For each epoch, the data is split into smaller subsets called batches. The batch size and number of epochs are both adjustable parameters that affect the learning and behaviour of the network. The training process for supervised learning is illustrated in Figure \ref{fig:SL}.  For our network, the input data consisted of the KuKa radar data, and output of MagnaProbe snow depth data.  I used a batch size of 20 and 500 epochs for most of the training runs. 
+
+The loss function parametrizes the error between the neural network's output predictions and the true label values for that input. The network then uses the loss to update its weights before the next epoch.  Common loss functions include mean squared error, mean absolute error, and sparse categorical cross-entropy (only used for classification problems, not regression). Here the neural network was trained using mean squared error (MSE) as the loss function, which calculates the loss by equation (2) \cite{keras},  where x is the input data for the given sample,  y the label data for that sample,  D the whole data set, and N the number of samples in D.
+
+\begin{equation}
+	MSE = \frac{1}{N}\sum_{(x, y)\in D}(y - prediction(x))^2
+\end{equation}
+
+The learning rate of a neural network defines how much the weights of the network can be updated with each pass, and can be set by the user. High learning rate can lead to overshoot and large oscillations in loss, and low learning rate to very slow convergence. Learning rate is thus an important parameter to optimize for best neural network performance. Here,  fixed learning rates ranging from 0.1 to 0.0001 were trialled before using a learning rate scheduler to lower the learning rate throughout training using a polynomial decay function.  I also trialled ReduceLROnPlateau, an inbuilt Keras function to lower the learning rate when validation loss reaches a plateau.
+
+The optimizer algorithm decides how to update the neural network weights according to the loss obtained after each training epoch. The goal of the optimizer is to change the weights of the network such that the loss is minimized,  thus reaching the ideal weight configuration. I initially used root mean square propagation (RMSprop) as the optimization algorithm. However, I later switched to using the Adam (Adaptive Moment estimation) optimizer, as I found this gave slightly better minimum loss convergence.  RMSprop and Adam are both adaptive learning rate algorithms,  meaning that the learning step is adjusted throughout training,  so manual hyperparameter tuning and learning rate scheduling are not needed.  Adam builds on RMPSprop by incorporating momentum, which accelerates gradient descent in the relevant direction, similar to a ball rolling down a hill under gravity \cite{optimizers}.
+
+Overfitting in machine learning occurs when the neural network passes over the same training dataset too many times and infers connections that may not be valid, leading to poor predictions when the network is run with new data.  Overfitting can be caused by having too little training data, or having too high of a learning rate.  Methods to prevent overfitting include: dropout, whereby a fraction of the connections within the neural network are randomly severed; early stopping, which halts the training process once the validation loss reaches a plateau; and reducing the model complexity by simply removing some layers of the neural network.  I used a dropout fraction of 0.2 for this neural network.
+
+The neural network was constructed as a dense fully connected network consisting of 2 dense layers,  the first consisting of 32 units using the sigmoid activation function, and the second of 1 using the ReLU activation function \cite{ReLU}. I also completed some training runs with a more complex model consisting of 4 dense layers, the first consisting of 32 (sigmoid) units, the second two of 64 (ReLU), and the final layer of 1 (ReLU), but I switched back to the simpler network structure as I found it gave better results, possibly due to overfitting with the more complex network. 
+
+Training was done over 500 epochs, with a batch size of 20. The data were normalized and split into training and testing data in ratio 3:1 using scikit-learn functions. The data were also shuffled according to a random state.  Shuffling the data helps to prevent overfitting in this case where consecutive echoes and snow depth are likely to be similar. This shuffling was reversed after testing by sorting the arrays according to their original index number to display the predictions in a way that is representative of movement along the transect.
+
+\section{Results and Analysis}
+
+\subsection{Searching for linear relationships between echo properties and snow depth}
+Example results from peak-picking and parametrizing power return width for a single echo are shown in Figure \ref{fig:points}. The depth on the y axis is calculated from the return time, and the intensity is in units of energy over time (Watts). The functions discussed in this section were applied before conversion of the echoes to dB, and are plotted in linear units of power.
+
+\begin{figure}[H]
+   		 \includegraphics[width=0.5\linewidth]{maxima.png}
+   		 \includegraphics[width=0.5\linewidth]{width.png}
+    		\caption{Finding the maxima within a radar echo and the width of the radar echo power return}
+	\label{fig:points}
+\end{figure}
+
+Figure \ref{fig:globfig} shows examples of different echo parameters plotted against MagnaProbe snow depth to evaluate whether they follow any straightforward relationship. This was to investigate the possibility of performing a simple linear regression on different echo properties against MagnaProbe snow depth. However, it is clear from the graphs and the values of the Pearson correlation coefficient obtained for each that they do not follow any strong linear relationship. The difference in depth between the first and second echo in Figure \ref{fig:subfig1} is taken from the depth value at which the echo first falls below the threshold power subtracted from the depth value at which the echo first passes the threshold power. The vertical bands in Figure \ref{fig:subfig3} and \ref{fig:subfig4} occur because of the resolution of the echo return; the gap between each vertical line corresponds to the depth resolution of the echo. This is an interesting feature to observe, but not useful for building a predictive model,  which was our aim here. 
+
+\begin{figure}[H]
+
+\subfloat[][Index of echo maximum against nearest MagnaProbe depth]{
+\includegraphics[width=0.45\textwidth]{intensitymagna.png}
+\label{fig:subfig1}}
+\qquad
+\subfloat[][Echo depth range against nearest MagnaProbe depth]{
+\includegraphics[width=0.45\textwidth]{diffmagna.png}
+\label{fig:subfig2}}
+\linebreak
+\subfloat[][Depth of first echo peak  against nearest MagnaProbe depth]{
+\includegraphics[width=0.45\textwidth]{firstdepthmagna.png}
+\label{fig:subfig3}}
+\qquad
+\subfloat[][Depth difference between first and second peak against nearest MagnaProbe depth]{
+\includegraphics[width=0.45\textwidth]{rangediffmagna.png}
+\label{fig:subfig4}}
+\caption{A range of echo properties plotted against corresponding MagnaProbe depth}
+\label{fig:globfig}
+\end{figure}
+
+\subsection{Neural Network Training}
+
+Following these preliminary tests, I constructed an artificial neural network to take KuKa radar echoes as input with MagnaProbe snow depth data as validation output.
+
+\subsubsection{Training with unprocessed echoes}
+
+Initial runs of the neural network produced a final loss value of around 110, with neural network outputs corresponding approximately to an average snow depth.  This may be because the model optimizer got stuck at a local minimum of loss,  causing the network to give a "best guess" for snow depth corresponding approximately to the average for every echo.  It is also possible that it was too difficult for the network to extract features corresponding to the snow depth from the radar echoes due to the presence of other echo features.  Predictions made by early trials of the neural network are shown in Figure \ref{fig:flat}.
+
+It was possible to combine echoes in the same frequency band with different polarisations by addition across each array element.  I tried different combinations of echoes (e.g Ka VV + VH) as input for the neural network, with the idea that different polarisations may reveal different features that would help the neural network find the snow depth values. This lowered the loss slightly,  but produced similar output predictions.
+
+\begin{figure}[H]
+\centering
+   		 \includegraphics[width=0.88\linewidth]{flatpred.png}
+    		\caption{Initial neural network predictions produced when training with unprocessed echoes. The predictions (green) do not follow the MagnaProbe snow depth values (blue) in any meaningful way, and the residuals (red) are large.}
+	\label{fig:flat}
+\end{figure}
+
+\subsubsection{Training with anomaly echoes}
+
+Dr. Tsamados suggested taking the anomaly to the echoes, and subsequent training runs with the mean subtracted echoes returned more varied predictions with a slightly lower final loss of around 100, indicating this would be a useful preprocessing method.  However, Dr. Willatt pointed out that taking the mean to the echoes when the air/snow interface occured at different points in different echoes may not be valid due to the risk of artificially subtracting features in echoes.  Figure \ref{fig:unaligned} shows an example of the echo, mean, and mean subtracted echo. The y axis shows successive echoes along the transect, and the x axis simply the index of that element in the 1d echo array, which corresponds to increasing distance (depth) from the radar along the x axis. The echo intensity reflected in the colour scale, with yellow being the highest intensity in the echo return, and blue the lowest.
+
+\begin{figure}[H]
+   		 \includegraphics[width=\linewidth]{ku_vv_unaligned.png}
+    		\caption{Ku VV echoes , mean Ku VV echo, and Ku VV anomaly (echoes with mean subtracted). In the anomaly echo we see that subtracting the mean removes the yellow primary maximum corresponding to the air/snow interface.}
+	\label{fig:unaligned}
+\end{figure}
+
+Figure \ref{fig:an} shows the predictions produced when the mean subtracted echo in Figure 10 was supplied to the neural network. We can see that the network varied its guesses more.  The final validation loss was lowered to around 100,  but the model still did not produce meaningful predictions.
+
+\begin{figure}[H]
+\centering
+   		 \includegraphics[width=0.8\linewidth]{unaligned_anomaly_pred.png}
+    		\caption{Neural network predictions (green) against MagnaProbe snow depth (blue) produced when the network was trained using Ku VV mean subtracted echoes. The range of values taken by the predictions is slightly larger than in Figure \ref{fig:flat}, but they still do not follow any meaningful relationship with the true values.}
+	\label{fig:an}
+\end{figure}
+\pagebreak
+
+\subsubsection{Training with aligned echoes}
+Aligning the air/snow interface to occur in the same index for every echo dramatically improved the neural network performance, and lowered the final validation loss to around 50.  Aligned echoes with mean and mean subtracted for Ku VV are shown in Figure \ref{fig:aligned}, and neural network results based on aligned Ku VV input in Figure \ref{fig:alpred}.  From visual inspection of the mean subtracted echo in Figure \ref{fig:aligned} we can see that taking the anomaly makes the snow/ice interface more prominent (visible between 100 and 150 on the x axis). We also see in Figure \ref{fig:alpred} that the neural network predictions follow the true values much more closely.  The performance improvement of the neural network after aligning the echoes implies that the location of features within the echo is important to the network learning. 
+
+
+\begin{figure}[H]
+   		 \includegraphics[width=\linewidth]{ku_vv_anomaly.png}
+    		\caption{Aligned Ku VV echoes , mean Ku VV echo, and Ku VV anomalies. In contrast to \ref{fig:aligned}, the primary scattering interface now occurs at the same index for every echo, and in the anomaly echo we can more clearly make out scattering from the snow/ice interface.}
+	\label{fig:aligned}
+\end{figure}
+
+\begin{figure}
+\centering
+   		 \includegraphics[width=0.9\linewidth]{ku_vv_aligned_loss.png}
+   		 \includegraphics[width=0.9\linewidth]{ku_vv_aligned_pred.png}
+    		\caption{Plots of the loss per epoch and neural network predictions using Ku VV aligned echoes as the training set.  We see that the predicted values now follow the true values much more closely, and the residuals (red) are closer to zero. }
+	\label{fig:alpred}
+\end{figure}
+
+With the aligned echoes, I returned to the idea of combining echoes of the same frequency band with different polarisations.  On Dr.  Willatt's suggestion, I tried the combination Ku VV + 3HV, which was the most successful,  producing a Pearson correlation between predicted and MagnaProbe values of up to 0.74.  The multiplication factor of 3 brought the HV echoes up to a similar relative intensity as the VV echoes.  Cross-polarisation echoes (HV and VH) are associated with multiple scattering within the snow pack, meaning the returned echo has a lower intensity.  It also means that combining cross- and co-polarisation echoes has the potential to give the network more information about the snow cover.  Figure \ref{fig:kuvv3hv} shows the neural network predictions and a graph between the predicted and true values with the Pearson correlation coefficient.
+
+\begin{figure}[H]
+\centering
+   		 \includegraphics[width=0.9\linewidth]{lr0.0001_pred.png}
+   		 \includegraphics[width=0.9\linewidth]{best_r.png}
+    		\caption{Neural network predictions (green) compared to MagnaProbe values (blue) using Ku VV+3HV aligned echoes as the training set.  The predictions here look similar to those in Figure \ref{fig:alpred}, with a slightly higher Pearson correlation.}
+	\label{fig:kuvv3hv}
+\end{figure}
+
+I then trained the network with the exact same input data but with a higher initial learning rate of 0.1, instead of 0.0001 as used in all other training runs. The training loss fluctuated much more (see Figure \ref{fig:lr0.1}),  as we would expect of a learning rate that is too high. The Pearson correlation between predictions and true values was lowered to 0.68, showing that the predictions were less accurate.  One feature of the predictions shown in \ref{fig:lr0.1} that is interesting to see is that the network was more willing to make snow depth guesses above 40cm than when trained with a lower learning rate.
+
+\begin{figure}[H]
+\centering
+   		 \includegraphics[width=0.9\linewidth]{lr0.1_loss.png}
+   		 \includegraphics[width=0.9\linewidth]{lr0.1_pred.png}
+    		\caption{Neural network training loss and predictions using a higher learning rate of 0.1 with the same training data. We see that around point 1000, where the snow is particularly deep, the predicted value in green matches the MagnaProbe value in blue more closely than in \ref{fig:alpred} and \ref{fig:kuvv3hv}.}
+	\label{fig:lr0.1}
+\end{figure}
+\pagebreak
+Air/snow interface alignment allowed me to take the anomaly to the echoes (shown in Figure \ref{fig:aligned}) which also returned good results.  The idea behind subtracting the mean was to help the network pick out deviations from the average,  thus highlighting the features that varied from echo to echo,  i.e,  scattering from the snow/ice interface.  Since the air/snow interface was aligned to the same point in all of the echoes,  then subtracting the mean from the echoes made the next most significant scattering interface the snow/ice interface. The predictions produced using this were very similar to those from Ku VV+3HV, with a slightly lower Pearson R of 0.71.
+
+\subsubsection{Excluding repeated echoes from training}
+
+By inspecting the neural network predictions for snow depth in Figure \ref{fig:alpred}, \ref{fig:kuvv3hv} and \ref{fig:lr0.1}, we see that the neural network predictions were most accurate in places where the radar was stationary and therefore repeated echoes for some time.  This is likely because the network had already been exposed to echoes from locations where the radar was stationary, meaning it was essentially "cheating" because the network had already seen the MagnaProbe snow depth values for these locations in the training set.  It is also possible that it was overfitting on these echoes since they were artificially overrepresented in the data,  which could cause the network to learn less about the echoes that were not repeated.  For these reasons, it was important to filter out the repeated echoes and train the network only with the unique points. This meant that the Pearson correlations ranging from 0.7-0.74 obtained from different combinations of polarisations and echo anomalies were also likely artificially elevated. The aligned echoes filtered for repeated echoes for Ku VV are shown in Figure \ref{fig:kufilt}. 
+
+\begin{figure}[H]
+   		 \includegraphics[width=\linewidth]{ku_vv_anomaly_filt.png}
+    		\caption{Ku VV echo,es mean Ku VV echo, and Ku VV anomaly (echo with mean subtracted) after filtering for repeated echoes. Each horizontal echo is now unique,  and we do not see horizontal stripes of identical echoes as in Figures  \ref{fig:unaligned} and \ref{fig:aligned}.}
+	\label{fig:kufilt}
+\end{figure}
+
+Training the neural network with the filtered and aligned echoes in the same combination (Ku VV + 3HV) gave  predictions which generally followed the MagnaProbe values, but lowered the Pearson R value to around 0.59.   The size of the training set was also reduced from 7212 to 4910 as a consequence of removing the repeated echoes. Network predictions are shown in Figure \ref{fig:filtpred}. 
+
+\begin{figure}[H]
+\centering
+   		 \includegraphics[width=0.8\linewidth]{filt_pred.png}
+   		 \includegraphics[width=0.8\linewidth]{filt_r.png}
+    		\caption{Neural network predictions (green) compared to MagnaProbe values (blue) when the network was trained using using Ku VV+3HV aligned and filtered echoes. We no longer see horizontal stripes of repeated values where the KuKa radar stood stationary for some time. Previously, the network predicted the snow depth very well at the bands of repeated snow depth.  Here, the true values are more scattered, as are the network guesses, although they still follow the pattern of the true snow depths well.}
+	\label{fig:filtpred}
+\end{figure}
+\pagebreak
+I also trialled this with the filtered Ka echoes.  Figure \ref{fig:kafilt} shows the echo, mean, and mean subtracted echo for Ka VV. We see that subtracting the mean is less useful for the Ka-band as it makes any echo features quite difficult to make out, and has a weaker signature at depth compared to Ku VV.
+
+\begin{figure}[H]
+   		 \includegraphics[width=\linewidth]{ka_vv_anomaly_filt.png}
+    		\caption{Filtered and aligned Ka VV echoes, mean Ka VV echo,  and Ka VV anomaly (echo with mean subtracted). Subtracting the mean echo removes the maximum corresponding to the air/snow interface. It is quite difficult to make out the secondary maximum corresponding to the snow/ice interface compared to the Ku VV echoes in \ref{fig:kufilt}.}
+	\label{fig:kafilt}
+\end{figure}
+
+I trained the network using the filtered Ka-band echoes in the combination VV + 3HV as input, and obtained slightly better results, with a Pearson correlation of 0.6.  Results are shown in Figure \ref{fig:kafiltpred}. It is also worth noting that the number of Ka-band echoes remaining after removing the repeated echoes was 7447. The training set using the filtered Ka-band echoes was thus around the same as the size of the training set using the unfiltered Ku-band echoes. This is because there were more Ka-band echoes to begin with, because the radar collected Ka-band measurements at a higher frequency.
+
+\begin{figure}
+\centering
+   		 \includegraphics[width=0.99\linewidth]{ka_vv_hv_pred.png}
+   		 \includegraphics[width=0.99\linewidth]{ka_vv_hv_r.png}
+    		\caption{Neural network predictions (green) compared to MagnaProbe values (blue) when the network was trained using Ka VV+3HV aligned and filtered echoes. The predicted values generally reflect the pattern of the true values well.}
+	\label{fig:kafiltpred}
+\end{figure}
+
+Plots of the filtered echo, mean, and anomaly for the full range of frequency bands and polarisations are shown in appendix \ref{appendix:KuKa}.  We generally observe that Ku has a stronger signal at depth compared to Ka, and copolarised echoes (HH, VV) have a narrower band of high intensity in the echo return, whereas crosspolarised echoes (HV, VH) have a wider band of high intensity, likely due to multiple scattering within the snow pack. This also explains why combining cross- and co-polarisation echoes helps us extract more information about the snow depth.
+
+\pagebreak
+\section{Conclusions}
+
+The aim of this project was to develop a predictive model using a neural network with KuKa radar data as input and MagnaProbe snow depth measurements as validation data.  We have shown that this is a viable option for future radar data processing, and that a simple neural network is capable of extracting information from radar echoes to produce reasonable predictions of snow depth.
+
+\subsection{Radar Echo Properties}
+
+Both the Ku- and Ka-band can be used to extract information about snow depth, showing that the assumption that Ka-band radar scatters from the air/snow interface and does not penetrate further into the snow back does not hold.  While the Ku-band radar does scatter from the air/snow interface,  it still penetrates further into the snow pack to scatter from the snow/ice interface.  
+
+The Ka-band echoes have a weaker signal at depth when compared to the Ku-band, making taking the anomaly less useful for processing the Ka-band echoes. Taking the anomaly to the echoes enhances the secondary peak detection. It is easier to detect secondary peaks for the Ku-band than the Ka-band, which has a more faint signal at depth after taking the anomaly.
+
+For both the Ku- and Ka- band, combining echoes of different polarisations by simple addition is useful in revealing different features of the snow coverage. Generally, the co-polarised echoes (HH, VV) have a stronger intensity than the cross-polarised echoes (VH, HV).  Cross-polarised echoes are associated with multiple scattering within the snow pack, meaning the radar path length is greater, which is a cause of the reduction in intensity.  This could also mean that the velocity correction applied for radar travel time through the snow pack may not be correct for the cross-polarisation echoes.
+
+\subsection{Neural Network Behaviour}
+
+One interesting observation was the willingness of the neural network to output predictions that deviated more from the average, which I will call "risk-taking" behaviour.  Initially with the un-aligned unfiltered echoes the network was not risk-taking, but instead produced guesses around an average value.  Once the echoes were aligned, the network was more able to infer relationships between the echo return and snow depth, and predicted values that were closer to the real snow depths. When I trained the network with the same combination of data, learning rate, and number of layers, but changed only the learning rate, the predictions differed, despite producing similar final loss values. 
+
+In the case where I used a higher learning rate of 0.1 the training loss curve was much more noisy, and the network more inclined towards riskier guesses.  Comparing the neural network predictions in Figures \ref{fig:alpred} and \ref{fig:kuvv3hv}, where the network was trained with an initial learning rate of 0.0001, to those in Figure \ref{fig:lr0.1},  we see that for deeper snow depth values that deviated more from the mean, the network trained with a higher initial learning rate of 0.1 produced deeper guesses that also deviated more from the mean.
+
+In contrast, in the cases where I used a slower learning rate of 0.0001 with the same parameters otherwise, the training loss curve was much smoother, as we would expect, and the network was much less inclined towards risky guesses.  For the same outlier points, the network produced more cautious snow depth guesses that deviated from the mean less.  The Pearson correlation coefficient between the neural network predicted snow depth and MagnaProbe snow depth was higher in the case of lower learning rate,  with values ranging from 0.7 to 0.74 compared to a value of 0.68 for the predictions generated by the network trained with a higher learning rate. This aligns with what we would expect of the behaviour of a neural network with higher and lower learning rates, but poses an interesting problem. It is actually desirable for the neural network to be capable of taking more risky guesses, and therefore more accurately guess the snow depth at deep or shallow values that deviate from the mean. However, this means the guesses are in general less accurate, and the training process rewards cautious behaviour more. 
+
+After filtering the echoes for repetition, the Pearson correlation between predicted and true values decreased. This indicates that it was artificially high before due to identical echoes being present in both the testing and training data. It is also likely that the network performance was reduced because the size of the training set decreased from 7212 Ku-band echoes to 4910, meaning the network had fewer samples to learn with. 
+
+The fact that the network performed better with Ka-band echoes than Ku-band after filtering is interesting in two ways.  First, it shows that it is possible to extract snow depth from the Ka-band echoes with reasonable accuracy, which was previously not thought possible.  Second, it tells us that the network improves more with more training samples: this is because the Ka-band set contained 7447 samples after filtering compared to 4910 samples for Ku.  From this, we can infer that the difference in performance is probably due to the larger training set, rather than the Ka-band echo properties. 
+
+The risk-taking behaviour of the network may also be improved by including more samples with deeper snow depths. At present, the neural network seems not to pick up deeper snow depths as well, with the maximum snow depth predictions lying around 40cm even when the true depth is around 60cm.
+
+There are a number of other factors that could also affect the network performance.  If there is a lot of variation in the snow cover within a short spatial scale, the nearest MagnaProbe point to a given KuKa radar point may not accurately reflect the snow depth that the KuKa radar looks at.  This is also limited by the GPS accuracy of the MagnaProbe and of the KuKa radar. The tilt of the radar will also affect the recorded echo, and may in turn affect the neural network performance. As shown in Figure \ref{fig:sled}(b), when the radar is tilted, the path is longer than it would be if it were looking vertically as in Figure \ref{fig:sled}(a). This causes objects to appear further away than they actually are when the radar is tilted.  This could then also impact the ability of the neural network to extract the true snow depth from the radar return.  When the tilt angle is larger, the intensity of the radar return will also be lower because the main radar beam will likely be reflected in other directions. This means that ideally if the across- or along-track tilt for an echo point is above some tolerance value (here chosen as 5\degree) the data should be either excluded or corrected. 
+
+The work presented here provides a robust framework for a predictive neural network model to extract snow depth from radar data. This is a desirable solution for identifying snow depth from radar echoes because it does not rely on any hard-coded threshold values, and so can be adapted for use with different data sets. 
+
+\section{Future Work}
+
+The dramatic improvement in network performance after aligning the echoes tells us that the location of peaks within the echoes is important. This suggests that future work using a convolutional neural network (CNN) might be useful.  This is because an important strength of CNNs is feature detection regardless of where within the data features lie \cite{cnn}. A CNN might also offer a useful approach because the process of convolution will help to deal with any noise within the echo in a similar way to applying Gaussian smoothing to the echoes.
+
+Using a larger training set consisting of concatenated data from multiple days would also allow for more filtering, both for repeated echoes and for echoes where the across-track or along-track tilt is greater than some threshold (for example, 5\degree), without compromising the number of samples for the network training. Generally, applying this model to larger data sets will be useful for fine tuning the network approach presented here in future. We have shown that preprocessing the data is very useful for the network performance, and so further exploring different preprocessing methods is also another area to explore in future.
+
+Given that combining echoes of different polarisations increased the network performance, it may also be useful to
+investigate ways to combine Ku- and Ka-band echoes to further improve the ability of a neural network to extract features corresponding to the different scattering interfaces under study.  A simple addition was not possible as it was for the different polarisations within the same frequency band because of the different rates at which Ku- and Ka- band echoes were taken.  However,  using some sampling frequency to ensure the KuKa echoes all have same length and location in space would allow for a simple addition. A more complex approach using interpolation could also be explored.
+
+Another possibility for future work is to investigate whether it is possible to infer other characteristics of snow coverage such as snow density and stratification from the data.  Further work could also examine the possibility of retrieving information from satellite data that can be linked with other surface characteristics obtained from laser altimetry,  such as surface roughness.
+
+The Keras sequential API can only create single-input single-output models.  However, another approach for future work could be to build a more complex multiple-input/multiple-output model with the Keras Functional API.  In a functional model, some or all of the inputs are connected directly to the output, and the model can share layers.  This could be an interesting avenue for future research, as we have seen here that giving the network more information by combining echoes improves its learning, so being able to hand it Ku- and Ka-band would potentially further improve model accuracy.  It would also be possible to experiment with providing the network with other variables accompanying the echoes,  such as a guess for snow depth produced by some other simpler method. Using a multiple-output model would also make it possible to investigate the extraction of other features of the snow cover, such as snow density,  granularity, or stratification.
+
+\hfill
+\addcontentsline{toc}{section}{References}
+\begin{thebibliography}{9}
+
+\bibitem{albedo}
+	 I. Cvijanovic,  et al.
+	 \textit{Impacts of ocean albedo alteration on Arctic sea ice restoration and Northern Hemisphere climate},
+	 Environmental Research Letters, vol.10,  044020
+	 doi: 10.1088/1748-9326/10/4/044020,
+	 2015
+	 
+\bibitem{noaabelt}
+	\textit{What is the global ocean conveyor belt?},
+	NOAA's National Ocean Service, 01-Jun-2013. [online]. ,
+	Available: https://oceanservice.noaa.gov/facts/conveyor.html. 
+	Accessed: 05-Apr-2021.
+	 
+\bibitem{epa}
+	\textit{Climate Change Indicators: Arctic Sea Ice},
+	United States Environmental Protection Agency [online].,
+	Available: https://www.epa.gov/climate-indicators/climate-change-indicators-arctic-sea-ice,
+	2020
+
+\bibitem{stroeve}
+	J.Stroeve, et al.
+	\textit{Surface-based Ku- and Ka-band polarimetric radar for sea ice studies},
+	The Cryosphere, vol. 14, 4405-4426,
+	doi: 10.5194/tc-14-4405-2020,
+	2020
+	
+\bibitem{lawrence2018}
+	I. Lawrence, et al.
+	\textit{Estimating snow depth over Arctic sea ice from calibrated dual-frequency radar freeboards},
+	The Cryosphere, vol. 12, 3551–3564,
+	doi: 10.5194/tc-12-3551-2018,
+	2018
+	 
+\bibitem{radar}
+	M. I. Skolnik, 
+	\textit{Introduction to radar systems}, Chapter 1,
+	McGraw-Hill, 
+	1962
+	    
+\bibitem{kubandpen}
+	R. Willatt, et al.
+	\textit{Field Investigations of Ku-Band Radar Penetration Into Snow Cover on Antarctic Sea Ice},
+	 IEEE Transactions on Geoscience and Remote Sensing, vol. 48, no.1,
+	 doi: 10.1109/TGRS.2009.2028237,
+	 2010
+ 	
+\bibitem{beaven}
+    S. G. Beaven, et al.
+    \textit{Laboratory measurements of radar backscatter from bare and snow-covered saline ice sheets},
+    International Journal of Remote Sensing, vol.16, no. 5
+    doi: 10.1080/01431169508954448,
+    1995
+    		 
+\bibitem{laxonvol}
+	S. W. Laxon, et al.
+	\textit{CryoSat-2 estimates of Arctic sea ice thickness and volume},
+	Geophysical Research Letters, vol. 40, 732–737,
+	doi: 10.1002/grl.50193,
+	2013
+	
+\bibitem{SITfromSAR}
+	S. Kern, et al.
+	\textit{The impact of snow depth, snow density and ice density on sea ice thickness retrieval from satellite radar     altimetry: results from the ESA-CCI Sea Ice ECV Project Round Robin Exercise},
+	The Cryosphere, vol. 9, 37–52
+	doi: 10.5194/tc-9-37-2015,
+	2015
+
+\bibitem{circthinning}
+	K. Giles, et al.
+    \textit{Circumpolar thinning of Arctic sea ice following the 2007 record ice extent minimum},
+    Geophysical Research Letters, vol. 35, L22502,
+    doi: 10.1029/2008GL035710, 
+    2008
+
+\bibitem{kernspreen}
+	S. Kern and G. Spreen,
+	\textit{Uncertainties in Antarctic sea-ice thickness retrieval from ICESat},
+	Annals of Glaciology, vol. 56, no. 69, 
+	doi: 10.3189/2015AoG69A736,
+	2015
+	
+\bibitem{newman}
+	T. Newman, et al.
+	\textit{Assessment of radar-derived snow depth over Arctic sea ice},
+	Journal of Geophysical Research: Oceans, vol. 119, 8578–8602,
+	doi: 10.1002/2014JC010284,
+	2014
+
+\bibitem{fons}
+	S. W. Fons, et al.
+	\textit{Retrieval of snow freeboard of Antarctic sea ice using waveform fitting of CryoSat-2 returns},
+	The Cryosphere, vol. 13, 861–878,
+	doi.org: 10.5194/tc-13-861-2019,
+	2019
+	
+\bibitem{mei}
+	M. Jeffrey Mei, et al. 
+	\textit{Estimating early-winter Antarctic sea ice thickness from deformed ice morphology},
+	The Cryosphere, vol. 13, 2915–2934,
+	doi: 10.5194/tc-13-2915-2019
+	2019
+	
+\bibitem{magnaprobe}
+	 M. Sturm and J. Holmgren,
+	 \textit{An Automatic Snow Depth Probe for Field Validation Campaigns},
+	 Water Resources Research, vol. 54, no. 11, 9695–9701,
+	 doi: 10.1029/2018WR023559,
+	 2018
+	 
+\bibitem{ann}
+	SC. Wang,
+	\textit{Artificial Neural Network}, In: \textit{Interdisciplinary Computing in Java Programming},
+	The Springer International Series in Engineering and Computer Science, vol. 743,
+	doi: 10.1007/978-1-4615-0377,
+	2003
+
+\bibitem{SL}
+	E.B. Baum and F. Wilczek,
+	\textit{Supervised Learning of Probability Distributions by Neural Networks},
+	NIPS,
+	1987
+		
+\bibitem{tf}
+	M. Abadi, et al.
+	\textit{Tensor-Flow: Large-Scale Machine Learning on Heterogeneous Systems},
+	arxiv: 1603.04467v1
+	2016
+	
+\bibitem{keras}
+	F.  Chollet, et al.
+	\textit{Keras},
+	keras.io,
+	2015
+ 
+\bibitem{optimizers}
+	S. Ruder,
+	\textit{An overview of gradient descent optimization algorithms},
+	arXiv:1609.04747v2,
+	2017
+		
+\bibitem{ReLU}
+	X. Glorot, et al.
+	\textit{Deep Sparse Rectifier Neural Networks},
+	Proceedings of Machine Learning Research, vol.15,315-323,
+	2011
+	
+\bibitem{cnn}
+	K. O'Shea and R. Nash,
+	\textit{An Introduction to Convolutional Neural Networks},
+	arxiv:1511.08458,
+	2015,
+	
+\end{thebibliography} %Must end the environment
+
+\addcontentsline{toc}{section}{Acknowledgements}
+\section*{Acknowledgements}
+
+I would like to thank my supervisors Dr.  Tsamados and Dr.  Willatt for all their guidance throughout this project.  It has been a joy to work on this project under their supervision.  I feel honoured to have been able to work on something that I find so exciting.
+
+I would also like to thank Prof.  Rana Adhikari at Caltech for introducing me to artificial neural networks. I learned a great deal under his supervision,  and have returned to concepts he taught me multiple times throughout this project.
+
+Many thanks also to Prof. Ryan Nichol for helping me to build and debug the neural network model.
+
+Thank you to my flatmates, Pip and Elise, and my Mum,  for letting me read this report aloud to them, and for proofreading it themselves.
+
+\appendix
+\section{Appendix: Filtered echoes for all Ku- and Ka- band echoes}
+\label{appendix:KuKa}
+
+\begin{figure}[H]
+   		 \includegraphics[width=\linewidth]{ku_vv_anomaly_filt.png}
+    		\caption{Aligned Ku VV echo, mean Ku VV echo,  and Ku VV anomaly (echo with mean subtracted) with repeated echoes removed.}
+	\label{fig:kuvvfilt}
+\end{figure}
+
+\begin{figure}[H]
+   		 \includegraphics[width=\linewidth]{ku_hh_anomaly_filt.png}
+    		\caption{Aligned Ku HH echo, mean Ku HH echo,  and Ku HH anomaly (echo with mean subtracted) with repeated echoes removed.  We see the VV and HH echoes look very similar.}
+	\label{fig:kuhhfilt}
+\end{figure}
+
+\begin{figure}[H]
+   		 \includegraphics[width=\linewidth]{ku_vh_anomaly_filt.png}
+    		\caption{Aligned Ku VH echo, mean Ku VH echo,  and Ku VH anomaly (echo with mean subtracted) with repeated echoes removed. The band where maximum intensity occurs is much broader, possibly due to multiple scattering within the snow pack.}
+	\label{fig:kuvhfilt}
+\end{figure}
+
+\begin{figure}[H]
+   		 \includegraphics[width=\linewidth]{ku_hv_anomaly_filt.png}
+    		\caption{Aligned Ku HV echo, mean Ku HV echo,  and Ku HV anomaly (echo with mean subtracted) with repeated echoes removed. Again we see that the VH and HV echoes look very similar.}
+	\label{fig:kuhvfilt}
+\end{figure}
+
+\begin{figure}[H]
+   		 \includegraphics[width=\linewidth]{ka_vv_anomaly_filt.png}
+    		\caption{Aligned and filtered Ka VV echoes , mean Ka VV echo,  and Ka VV anomaly (echoes with mean subtracted). Compared to Ku VV we see that the band of maximum intensity is narrower, and the signal at depth weaker.}
+	\label{fig:kavvfilt}
+\end{figure}
+
+\begin{figure}[H]
+   		 \includegraphics[width=\linewidth]{ka_hh_anomaly_filt.png}
+    		\caption{Aligned and filtered Ka HH echo, mean Ka HH echo,  and Ka HH anomaly (echo with mean subtracted).}
+	\label{fig:kahhfilt}
+\end{figure}
+
+\begin{figure}[H]
+   		 \includegraphics[width=\linewidth]{ka_vh_anomaly_filt.png}
+    		\caption{Plots showing the aligned and filtered Ka VH echo, mean Ka VH echo,  and Ka VH anomaly (echo with mean subtracted). Again we see that the crosspol echoes have a wider band of maximum intensity than the copol echoes in both the Ku and the Ka band.}
+	\label{fig:kavhfilt}
+\end{figure}
+
+\begin{figure}[H]
+   		 \includegraphics[width=\linewidth]{ka_hv_anomaly_filt.png}
+    		\caption{Aligned and filtered Ka HV echo, mean Ka HV echo,  and Ka HV anomaly (echo with mean subtracted).}
+	\label{fig:kahvfilt}
+\end{figure}
+
+
+\end{document}
