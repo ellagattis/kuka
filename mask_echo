@@ -1,0 +1,19 @@
+# code mask out areas of repeated echoes by Michel
+# I have made this into a generic function that can be imported
+import numpy as np
+# calculate echo mask
+def mask_and_filter(echo, echo_shape, tolerance):
+  temp=np.transpose(echo)
+  temp1=np.roll(temp,shift=1,axis=0)
+  diff=temp1-temp
+  std=[]
+  for i in range (np.transpose(_echo).shape[0]):
+      std.append(np.sum(diff[i,:]**2))
+
+  mask=np.outer(np.asarray(std),np.ones((echo_shape)))
+  mask[mask<tolerance]=np.nan
+  mask[mask>=tolerance]=1.
+  # mask[:,1300]   
+
+  echo_masked = np.transpose(echo)[:]*mask[:]
+  echo_filtered = echo_masked[~np.isnan(echo_masked).any(axis=1),:]
